@@ -1,7 +1,5 @@
 package com.arezoonazer.player.view
 
-import android.graphics.Bitmap
-import android.graphics.drawable.Drawable
 import android.os.Build
 import android.os.Bundle
 import android.widget.ImageView
@@ -28,16 +26,9 @@ import com.arezoonazer.player.viewmodel.PlayerViewModel
 import com.arezoonazer.player.viewmodel.QualityViewModel
 import com.arezoonazer.player.viewmodel.SubtitleViewModel
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.DataSource
 import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.bumptech.glide.load.engine.GlideException
-import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
-import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
-import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import dagger.hilt.android.AndroidEntryPoint
-import java.nio.ByteBuffer
-import java.security.MessageDigest
 
 @AndroidEntryPoint
 class PlayerActivity : AppCompatActivity() {
@@ -68,14 +59,16 @@ class PlayerActivity : AppCompatActivity() {
         initClickListeners()
 
         exoBinding.exoControllerPlaceholder.exoProgress.addListener(object : TimeBar.OnScrubListener {
+            @RequiresApi(Build.VERSION_CODES.HONEYCOMB)
             override fun onScrubStart(timeBar: TimeBar, position: Long) {
+                updateThumbnailPosition(timeBar as DefaultTimeBar , position)
+
             }
 
             @RequiresApi(Build.VERSION_CODES.HONEYCOMB)
             override fun onScrubMove(timeBar: TimeBar, position: Long) {
-                updateThumbnailPosition(timeBar as DefaultTimeBar)
+                updateThumbnailPosition(timeBar as DefaultTimeBar , position)
                 exoBinding.exoControllerPlaceholder.thumbnailPreview.visibility = ImageView.VISIBLE
-
                 Glide.with(this@PlayerActivity)
                     .load("https://static.cdn.asset.filimo.com//filimo-video/158168-thumb-t01.webp")
                     .apply(
@@ -125,21 +118,23 @@ class PlayerActivity : AppCompatActivity() {
     }
     @RequiresApi(Build.VERSION_CODES.HONEYCOMB)
     @OptIn(UnstableApi::class)
-    private fun updateThumbnailPosition(timeBar: DefaultTimeBar) {
-        val thumbCenterX = timeBar.left + timeBar.x
-        val thumbnailHalfWidth = exoBinding.exoControllerPlaceholder.thumbnailPreview.width / 2
-        val screenWidth = resources.displayMetrics.widthPixels
-        val leftPosition = thumbCenterX - thumbnailHalfWidth
-        val rightPosition = thumbCenterX + thumbnailHalfWidth
+    private fun updateThumbnailPosition(timeBar: DefaultTimeBar, position: Long) {
+        val duration = binding.exoPlayerView.player?.duration ?: 0
 
-        when {
-            leftPosition < 0 -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = 0f
-            rightPosition > screenWidth -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = (screenWidth - exoBinding.exoControllerPlaceholder.thumbnailPreview.width).toFloat()
-            else -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = leftPosition.toFloat()
+        if (duration > 0) {
+            val scrubberPositionRatio = position.toFloat() / duration.toFloat()
+            val scrubberPositionPx = scrubberPositionRatio * timeBar.width
+            val thumbnailWidth = exoBinding.exoControllerPlaceholder.thumbnailPreview.width
+            val thumbnailHalfWidth = thumbnailWidth / 2
+            val screenWidth = resources.displayMetrics.widthPixels
+            val thumbnailX = scrubberPositionPx - thumbnailHalfWidth
+            when {
+                thumbnailX < 0 -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = 0f
+                thumbnailX + thumbnailWidth > screenWidth -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = (screenWidth - thumbnailWidth).toFloat()
+                else -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = thumbnailX
+            }
         }
     }
-
-
 
     override fun onResume() {
         super.onResume()
