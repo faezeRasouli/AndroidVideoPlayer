@@ -1,9 +1,18 @@
 package com.arezoonazer.player.view
 
+import android.graphics.Bitmap
+import android.graphics.drawable.Drawable
+import android.os.Build
 import android.os.Bundle
+import android.widget.ImageView
 import androidx.activity.viewModels
+import androidx.annotation.OptIn
+import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.ui.DefaultTimeBar
+import androidx.media3.ui.TimeBar
 import com.arezoonazer.player.R
 import com.arezoonazer.player.databinding.ActivityPlayerBinding
 import com.arezoonazer.player.databinding.ExoPlayerViewBinding
@@ -18,7 +27,17 @@ import com.arezoonazer.player.view.track.TrackSelectionDialog
 import com.arezoonazer.player.viewmodel.PlayerViewModel
 import com.arezoonazer.player.viewmodel.QualityViewModel
 import com.arezoonazer.player.viewmodel.SubtitleViewModel
+import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DataSource
+import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.bumptech.glide.load.engine.GlideException
+import com.bumptech.glide.load.engine.bitmap_recycle.BitmapPool
+import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
+import com.bumptech.glide.request.RequestListener
+import com.bumptech.glide.request.RequestOptions
 import dagger.hilt.android.AndroidEntryPoint
+import java.nio.ByteBuffer
+import java.security.MessageDigest
 
 @AndroidEntryPoint
 class PlayerActivity : AppCompatActivity() {
@@ -37,6 +56,7 @@ class PlayerActivity : AppCompatActivity() {
 
     private val qualityViewModel: QualityViewModel by viewModels()
 
+    @OptIn(androidx.media3.common.util.UnstableApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(binding.root)
@@ -46,6 +66,32 @@ class PlayerActivity : AppCompatActivity() {
         subtitleViewModel.onActivityCrated()
         resolveSystemGestureConflict()
         initClickListeners()
+
+        exoBinding.exoControllerPlaceholder.exoProgress.addListener(object : TimeBar.OnScrubListener {
+            override fun onScrubStart(timeBar: TimeBar, position: Long) {
+            }
+
+            @RequiresApi(Build.VERSION_CODES.HONEYCOMB)
+            override fun onScrubMove(timeBar: TimeBar, position: Long) {
+                updateThumbnailPosition(timeBar as DefaultTimeBar)
+                exoBinding.exoControllerPlaceholder.thumbnailPreview.visibility = ImageView.VISIBLE
+
+                Glide.with(this@PlayerActivity)
+                    .load("https://static.cdn.asset.filimo.com//filimo-video/158168-thumb-t01.webp")
+                    .apply(
+                        RequestOptions()
+                            .override(100, 200)
+                            .transform(GlideThumbnailTransformations(position))
+                            .diskCacheStrategy(DiskCacheStrategy.DATA)
+                    )
+                    .into(exoBinding.exoControllerPlaceholder.thumbnailPreview)
+            }
+
+            override fun onScrubStop(timeBar: TimeBar, position: Long, canceled: Boolean) {
+                exoBinding.exoControllerPlaceholder.thumbnailPreview.visibility = ImageView.GONE
+            }
+        })
+
 
         with(viewModel) {
             playerLiveData.observe(this@PlayerActivity) { exoPlayer ->
@@ -77,6 +123,23 @@ class PlayerActivity : AppCompatActivity() {
             }
         }
     }
+    @RequiresApi(Build.VERSION_CODES.HONEYCOMB)
+    @OptIn(UnstableApi::class)
+    private fun updateThumbnailPosition(timeBar: DefaultTimeBar) {
+        val thumbCenterX = timeBar.left + timeBar.x
+        val thumbnailHalfWidth = exoBinding.exoControllerPlaceholder.thumbnailPreview.width / 2
+        val screenWidth = resources.displayMetrics.widthPixels
+        val leftPosition = thumbCenterX - thumbnailHalfWidth
+        val rightPosition = thumbCenterX + thumbnailHalfWidth
+
+        when {
+            leftPosition < 0 -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = 0f
+            rightPosition > screenWidth -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = (screenWidth - exoBinding.exoControllerPlaceholder.thumbnailPreview.width).toFloat()
+            else -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = leftPosition.toFloat()
+        }
+    }
+
+
 
     override fun onResume() {
         super.onResume()

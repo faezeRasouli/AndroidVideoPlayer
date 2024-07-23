@@ -39,6 +39,9 @@ dependencies {
     implementation "com.google.dagger:hilt-android:$library.hilt"
     kapt "com.google.dagger:hilt-compiler:$library.hilt"
 
+    implementation 'com.github.bumptech.glide:glide:4.12.0'
+    kapt 'com.github.bumptech.glide:compiler:4.12.0'
+
     testImplementation "junit:junit:$library.junit"
     testImplementation "androidx.arch.core:core-testing:$library.coreTesting"
     testImplementation "org.mockito.kotlin:mockito-kotlin:$library.mockito"
