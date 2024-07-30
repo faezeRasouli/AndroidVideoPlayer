@@ -8,6 +8,7 @@ import androidx.annotation.OptIn
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.isVisible
+import androidx.media3.common.util.Log
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.ui.DefaultTimeBar
 import androidx.media3.ui.TimeBar
@@ -126,23 +127,28 @@ class PlayerActivity : AppCompatActivity() {
         val start = location[0]
         val end = start + timeBar.width
         val duration = binding.exoPlayerView.player?.duration ?: 0
+
         if (duration > 0) {
             val scrubberPositionRatio = position.toFloat() / duration.toFloat()
             val scrubberPositionPx = scrubberPositionRatio * timeBar.width
+
             val thumbnailWidth = exoBinding.exoControllerPlaceholder.thumbnailPreview.width
             val thumbnailHalfWidth = thumbnailWidth / 2
-            val xPositionStart = start + scrubberPositionPx
-            val thumbnailX = scrubberPositionPx - thumbnailHalfWidth + start
-            when {
-                start + scrubberPositionPx + thumbnailWidth < end -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x =
-                    xPositionStart
 
-                else ->
-                    exoBinding.exoControllerPlaceholder
-                        .thumbnailPreview.x = thumbnailX
+            val thumbnailX = start + scrubberPositionPx - thumbnailHalfWidth
+
+            val leftBound = start.toFloat()
+            val rightBound = end - thumbnailWidth.toFloat()
+
+            exoBinding.exoControllerPlaceholder.thumbnailPreview.x = when {
+                thumbnailX < leftBound -> leftBound
+                thumbnailX > rightBound -> rightBound
+                else -> thumbnailX
             }
         }
     }
+
+
 
     override fun onResume() {
         super.onResume()

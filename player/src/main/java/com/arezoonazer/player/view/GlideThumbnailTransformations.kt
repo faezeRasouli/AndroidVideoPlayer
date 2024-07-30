@@ -11,7 +11,7 @@ class GlideThumbnailTransformations(private val position: Long) : BitmapTransfor
         companion object {
             private const val MAX_LINES = 10
             private const val MAX_COLUMNS = 10
-            private const val THUMBNAILS_EACH = 5000 // milliseconds
+            private const val THUMBNAILS_EACH = 10000 // milliseconds
         }
 
         private var x: Int = 0
