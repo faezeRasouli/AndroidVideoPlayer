@@ -58,16 +58,17 @@ class PlayerActivity : AppCompatActivity() {
         resolveSystemGestureConflict()
         initClickListeners()
 
-        exoBinding.exoControllerPlaceholder.exoProgress.addListener(object : TimeBar.OnScrubListener {
+        exoBinding.exoControllerPlaceholder.exoProgress.addListener(object :
+            TimeBar.OnScrubListener {
             @RequiresApi(Build.VERSION_CODES.HONEYCOMB)
             override fun onScrubStart(timeBar: TimeBar, position: Long) {
-                updateThumbnailPosition(timeBar as DefaultTimeBar , position)
+                updateThumbnailPosition(timeBar as DefaultTimeBar, position)
 
             }
 
             @RequiresApi(Build.VERSION_CODES.HONEYCOMB)
             override fun onScrubMove(timeBar: TimeBar, position: Long) {
-                updateThumbnailPosition(timeBar as DefaultTimeBar , position)
+                updateThumbnailPosition(timeBar as DefaultTimeBar, position)
                 exoBinding.exoControllerPlaceholder.thumbnailPreview.visibility = ImageView.VISIBLE
                 Glide.with(this@PlayerActivity)
                     .load("https://static.cdn.asset.filimo.com//filimo-video/158168-thumb-t01.webp")
@@ -116,22 +117,29 @@ class PlayerActivity : AppCompatActivity() {
             }
         }
     }
+
     @RequiresApi(Build.VERSION_CODES.HONEYCOMB)
     @OptIn(UnstableApi::class)
     private fun updateThumbnailPosition(timeBar: DefaultTimeBar, position: Long) {
+        val location = IntArray(2)
+        timeBar.getLocationOnScreen(location)
+        val start = location[0]
+        val end = start + timeBar.width
         val duration = binding.exoPlayerView.player?.duration ?: 0
-
         if (duration > 0) {
             val scrubberPositionRatio = position.toFloat() / duration.toFloat()
             val scrubberPositionPx = scrubberPositionRatio * timeBar.width
             val thumbnailWidth = exoBinding.exoControllerPlaceholder.thumbnailPreview.width
             val thumbnailHalfWidth = thumbnailWidth / 2
-            val screenWidth = resources.displayMetrics.widthPixels
-            val thumbnailX = scrubberPositionPx - thumbnailHalfWidth
+            val xPositionStart = start + scrubberPositionPx
+            val thumbnailX = scrubberPositionPx - thumbnailHalfWidth + start
             when {
-                thumbnailX < 0 -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = 0f
-                thumbnailX + thumbnailWidth > screenWidth -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = (screenWidth - thumbnailWidth).toFloat()
-                else -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x = thumbnailX
+                start + scrubberPositionPx + thumbnailWidth < end -> exoBinding.exoControllerPlaceholder.thumbnailPreview.x =
+                    xPositionStart
+
+                else ->
+                    exoBinding.exoControllerPlaceholder
+                        .thumbnailPreview.x = thumbnailX
             }
         }
     }
